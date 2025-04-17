@@ -1,22 +1,20 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import {ref, reactive, onMounted, computed} from 'vue';
+import ActiveTagsSelector from './components/ActiveTagsSelector.vue';
 import ParameterSliders from './components/ParameterSliders.vue';
-import FileInput from './components/FileInput.vue';
 import ResultsDisplay from './components/ResultsDisplay.vue';
-import { generateMovieIdea } from './services/generator.js';
+import {generateMovieIdeaWithRetry} from './services/generator.js';
 
 // --- State ---
 
 const compatibilityData = ref(null);
-const tagsListData = ref(null); // List of all possible tags (for potential future validation etc.)
-const isLoadingStaticData = ref(true); // Loading indicator for core data
-const staticDataError = ref(null); // Error message for core data loading failure
+const allTagsData = ref(null);
+const defaultActiveTags = ref(null);
+const selectedTagsByCategory = ref(null);
 
-const activeTagsData = ref(null); // Holds the currently active tags (from user file or default)
-const fileErrorMessage = ref(''); // Error message specific to loading active-tags-list.json (user or default)
-const isUsingDefaultTags = ref(false); // Flag to indicate if the default tags are currently active
+const isLoadingStaticData = ref(true);
+const staticDataError = ref(null);
 
-// Generation parameters controlled by sliders/checkbox
 const generationParams = reactive({
   min_score: 4.0,
   num_genres_target: 2,
@@ -26,158 +24,83 @@ const generationParams = reactive({
   add_antagonist: true,
 });
 
-const generatedIdeas = ref([]); // Array to hold successfully generated ideas
-const generationStatusMessage = ref(''); // User feedback during/after generation
-const isErrorStatus = ref(false); // Flag for styling the status message as an error
-const isGenerating = ref(false); // Flag to disable button during generation
+const generatedIdeas = ref([]);
+const generationStatusMessage = ref('');
+const isErrorStatus = ref(false);
+const isGenerating = ref(false);
 
 // --- Computed Properties ---
 
-// Determines if active tags data (from any source) is loaded
-const isFileLoaded = computed(() => activeTagsData.value !== null);
-
-// Determines if the generate button should be enabled
 const canGenerate = computed(() =>
-    isFileLoaded.value &&          // Need active tags
-    compatibilityData.value !== null && // Need compatibility data
-    !isLoadingStaticData.value &&  // Core data must be loaded
-    !staticDataError.value &&      // No core data errors
-    !isGenerating.value            // Not already generating
+    selectedTagsByCategory.value !== null && // Ensure selection state is initialized
+    compatibilityData.value !== null &&    // Need compatibility data
+    !isLoadingStaticData.value &&          // Core data must be loaded
+    !staticDataError.value &&              // No core data errors
+    !isGenerating.value                    // Not already generating
 );
-
-// --- Helper Function ---
-
-/**
- * Attempts to load the default active-tags-list.json file from the public directory.
- * Updates state if successful, otherwise sets a file error message.
- */
-async function loadDefaultActiveTags() {
-  // Only attempt to load default if no user file has been loaded yet
-  if (activeTagsData.value) {
-    console.log("Skipping default tags load, user file already present.");
-    return;
-  }
-  try {
-    console.log("Attempting to load default active-tags-list.json from /public...");
-    const response = await fetch('./active-tags-list.json'); // Path relative to public folder
-
-    if (!response.ok) {
-      // Gracefully handle 404 or other fetch errors for the default file
-      throw new Error(`Default file not found or fetch failed: ${response.statusText} (${response.status})`);
-    }
-
-    const defaultTagsData = await response.json();
-    // Use a flag to signal to handleFileLoaded this is the default load
-    handleFileLoaded(defaultTagsData, true); // Pass true for isDefaultLoad
-    isUsingDefaultTags.value = true; // Explicitly set flag here too
-    fileErrorMessage.value = ''; // Clear any previous file errors
-    // Set specific status message for default load
-    generationStatusMessage.value = 'Loaded default active tags template. Upload your own file to override.';
-    console.log("Successfully loaded and applied default active-tags-list.json");
-
-  } catch (error) {
-    console.warn("Could not load default active-tags-list.json:", error.message); // Use warn for non-critical error
-    // Display a less severe message if the default file is missing/fails
-    fileErrorMessage.value = `Could not load default tags template. Please upload a file manually.`;
-    isUsingDefaultTags.value = false;
-  }
-}
 
 // --- Lifecycle Hooks ---
 
 onMounted(async () => {
   isLoadingStaticData.value = true;
   staticDataError.value = null;
-  isUsingDefaultTags.value = false; // Reset flag on mount
+  selectedTagsByCategory.value = null;
 
   try {
-    // --- Load Core Data ---
-    console.log("Loading core data (compatibility, tags list)...");
-    const [compatResponse, tagsListResponse] = await Promise.all([
-      fetch('./tags-compatibility.json'),
-      fetch('./tags-list.json')
+    console.log("Loading core data (compatibility, all tags, default tags)...");
+    const [compatResponse, allTagsResponse, defaultTagsResponse] = await Promise.all([
+      fetch('./tags-compatibility.json').catch(e => ({
+        error: true,
+        statusText: e.message,
+        url: './tags-compatibility.json'
+      })),
+      fetch('./tags-list.json').catch(e => ({error: true, statusText: e.message, url: './tags-list.json'})),
+      fetch('./active-tags-list.json').catch(e => ({
+        error: true,
+        statusText: e.message,
+        url: './active-tags-list.json'
+      }))
     ]);
 
-    // Check core data responses
-    if (!compatResponse.ok) {
-      throw new Error(`Failed to load tags-compatibility.json: ${compatResponse.statusText} (${compatResponse.status})`);
+    // Check responses individually for better error reporting
+    if (compatResponse.error || !compatResponse.ok) {
+      throw new Error(`Failed to load ${compatResponse.url || 'tags-compatibility.json'}: ${compatResponse.statusText} (${compatResponse.status ?? 'Network Error'})`);
     }
-    if (!tagsListResponse.ok) {
-      throw new Error(`Failed to load tags-list.json: ${tagsListResponse.statusText} (${tagsListResponse.status})`);
+    if (allTagsResponse.error || !allTagsResponse.ok) {
+      throw new Error(`Failed to load ${allTagsResponse.url || 'tags-list.json'}: ${allTagsResponse.statusText} (${allTagsResponse.status ?? 'Network Error'})`);
+    }
+    if (defaultTagsResponse.error || !defaultTagsResponse.ok) {
+      console.warn(`Could not load default active tags from ${defaultTagsResponse.url || './active-tags-list.json'}: ${defaultTagsResponse.statusText} (${defaultTagsResponse.status ?? 'Network Error'}). Initializing with empty selection.`);
+      defaultActiveTags.value = {};
+      generationStatusMessage.value = 'Could not load default tag selection. Please select tags manually.';
     }
 
     // Parse core data
     compatibilityData.value = await compatResponse.json();
-    tagsListData.value = await tagsListResponse.json();
-    console.log("Static core data loaded successfully.");
+    allTagsData.value = await allTagsResponse.json();
+    // Parse default tags only if fetch was successful
+    if (!defaultActiveTags.value) {
+      defaultActiveTags.value = await defaultTagsResponse.json();
+    }
 
-    // --- Attempt to Load Default Active Tags AFTER core data ---
-    // This will only load if no user file is present yet
-    await loadDefaultActiveTags();
+    selectedTagsByCategory.value = JSON.parse(JSON.stringify(defaultActiveTags.value || {}));
+
+    console.log("Static core data loaded successfully. Initialized tag selection.");
 
   } catch (error) {
-    // This catch handles critical errors from CORE data loading
-    console.error("Error loading static CORE data:", error);
-    staticDataError.value = `Failed to load core data: ${error.message}. Generation unavailable. Please refresh.`;
-    generationStatusMessage.value = staticDataError.value; // Show critical error prominently
+    console.error("Error loading critical static data:", error);
+    staticDataError.value = `Failed to load critical data: ${error.message}. Generation unavailable. Please refresh.`;
+    generationStatusMessage.value = staticDataError.value;
     isErrorStatus.value = true;
-    // If core data fails, don't proceed further
+    allTagsData.value = null;
+    compatibilityData.value = null;
+    selectedTagsByCategory.value = null;
   } finally {
-    isLoadingStaticData.value = false; // Loading finished (even if errors occurred)
+    isLoadingStaticData.value = false;
   }
 });
 
 // --- Event Handlers ---
-
-/**
- * Handles successful loading/clearing of active tags file (user OR default).
- * @param {object | null} data - Parsed JSON data or null if cleared.
- * @param {boolean} [isDefaultLoad=false] - Flag indicating if this is the default load.
- */
-function handleFileLoaded(data, isDefaultLoad = false) {
-  activeTagsData.value = data;
-
-  if (data) {
-    // If it's NOT the initial default load, it's a user action
-    if (!isDefaultLoad) {
-      isUsingDefaultTags.value = false; // User uploaded, not using default anymore
-      fileErrorMessage.value = ''; // Clear errors
-      generationStatusMessage.value = ''; // Clear default load message
-      console.log("Active tags file loaded/updated by user.");
-    } else {
-      // It IS the default load, keep isUsingDefaultTags true (set in loadDefaultActiveTags)
-      console.log("Default active tags file processed by handleFileLoaded.");
-      // Keep the specific status message set by loadDefaultActiveTags
-    }
-  } else {
-    // File selection was cleared by the user
-    isUsingDefaultTags.value = false;
-    activeTagsData.value = null; // Ensure data is null
-    fileErrorMessage.value = '';
-    generationStatusMessage.value = ''; // Clear status message
-    console.log("Active tags file selection cleared.");
-    // Optionally try reloading default here if desired, or just wait for user upload
-    // loadDefaultActiveTags(); // Example: Uncomment to immediately reload default when user clears
-  }
-
-  // Always reset results when active tags change
-  generatedIdeas.value = [];
-  isErrorStatus.value = false; // Reset error status unless set elsewhere
-}
-
-/**
- * Handles errors during file loading/parsing (user OR default).
- * @param {string} message - The error message.
- */
-function handleFileError(message) {
-  activeTagsData.value = null; // Ensure no active tags
-  isUsingDefaultTags.value = false; // Not using default if there was an error
-  fileErrorMessage.value = message; // Display the specific file error
-  // Reset results and status
-  generatedIdeas.value = [];
-  generationStatusMessage.value = '';
-  isErrorStatus.value = false;
-}
 
 /**
  * Updates reactive generationParams from child component.
@@ -191,76 +114,77 @@ function updateGenerationParams(newParamsObject) {
  * Initiates the movie idea generation process.
  */
 async function handleGenerateIdeas() {
-  // Clear previous status (unless it's the 'default loaded' message)
-  if (!isUsingDefaultTags.value || generatedIdeas.value.length > 0) {
-    generationStatusMessage.value = '';
-  }
+  generationStatusMessage.value = '';
   isErrorStatus.value = false;
 
   // --- Pre-generation Checks ---
-  if (!isFileLoaded.value) {
-    // This case should be less likely now with default loading, but keep as safeguard
-    generationStatusMessage.value = "Error: No active tags loaded. Please upload a file or ensure the default template is available.";
+  if (!canGenerate.value) {
+    // Determine specific reason if needed (optional)
+    if (isLoadingStaticData.value || staticDataError.value) {
+      generationStatusMessage.value = "Error: Core data not loaded or failed to load.";
+    } else if (!selectedTagsByCategory.value) {
+      generationStatusMessage.value = "Error: Tag selection state not initialized.";
+    } else if (isGenerating.value) {
+      generationStatusMessage.value = "Generation is already in progress...";
+    } else {
+      generationStatusMessage.value = "Cannot generate. Please ensure tags are selected and parameters are set.";
+    }
     isErrorStatus.value = true;
-    return;
-  }
-  if (!compatibilityData.value || isLoadingStaticData.value || staticDataError.value) {
-    // Critical core data missing
-    generationStatusMessage.value = "Error: Core compatibility data unavailable. Cannot generate.";
-    isErrorStatus.value = true;
-    return;
-  }
-  if (isGenerating.value) {
-    // Prevent concurrent generation
-    // generationStatusMessage.value = "Generation is already in progress..."; // Avoid spamming this
+    console.warn("Generation prevented:", generationStatusMessage.value);
     return;
   }
 
+  // Check if any tags are actually selected
+  const totalSelected = Object.values(selectedTagsByCategory.value || {}).reduce((sum, arr) => sum + arr.length, 0);
+  if (totalSelected === 0) {
+    generationStatusMessage.value = "Warning: No tags selected. Please select some tags to generate ideas.";
+    isErrorStatus.value = false;
+    return;
+  }
+
+
   // --- Start Generation ---
   isGenerating.value = true;
-  // Set generating message, potentially overwriting 'default loaded' message now
   generationStatusMessage.value = 'Generating ideas... Please wait.';
   generatedIdeas.value = []; // Clear previous results
   const successfulIdeas = [];
   const numberOfIdeasToGenerate = 6;
 
   console.log("Generating ideas with parameters:", JSON.parse(JSON.stringify(generationParams)));
+  console.log("Using selected tags:", JSON.parse(JSON.stringify(selectedTagsByCategory.value)));
 
   try {
-    await new Promise(resolve => setTimeout(resolve, 10)); // UI update delay
+    await new Promise(resolve => setTimeout(resolve, 10));
 
     for (let i = 0; i < numberOfIdeasToGenerate; i++) {
       console.log(`Attempting generation #${i + 1} of ${numberOfIdeasToGenerate}`);
       try {
-        // Deep copy active tags FOR THIS ITERATION
-        const tagsCopy = JSON.parse(JSON.stringify(activeTagsData.value));
+        // Deep copy the *currently selected* tags FOR THIS ITERATION
+        const tagsCopy = JSON.parse(JSON.stringify(selectedTagsByCategory.value));
         // Shallow copy params FOR THIS ITERATION
-        const currentParams = { ...generationParams };
+        const currentParams = {...generationParams};
 
-        const idea = generateMovieIdea(tagsCopy, compatibilityData.value, currentParams);
+        const idea = generateMovieIdeaWithRetry(tagsCopy, compatibilityData.value, currentParams);
 
         if (idea) {
           successfulIdeas.push(idea);
-          // console.log(`Generation #${i + 1} successful.`); // Less verbose success log
         } else {
           console.warn(`Generation #${i + 1} failed (algorithm returned null).`);
         }
       } catch (generationError) {
         console.error(`Error during single idea generation #${i + 1}:`, generationError);
       }
-    } // End loop
+    }
 
     generatedIdeas.value = successfulIdeas;
 
     // --- Update Final Status Message ---
     if (successfulIdeas.length === 0) {
-      generationStatusMessage.value = 'Could not generate any valid ideas. Try adjusting parameters or using different active tags.';
+      generationStatusMessage.value = 'Could not generate any valid ideas. Try adjusting parameters or selecting different tags.';
       isErrorStatus.value = true;
     } else {
       generationStatusMessage.value = `Generation complete. Generated ${successfulIdeas.length} valid ideas.`;
       isErrorStatus.value = false;
-      // If default was used, maybe remove the indicator now that results exist?
-      // isUsingDefaultTags.value = false; // Optional: uncomment if desired
     }
 
   } catch (processError) {
@@ -278,43 +202,39 @@ async function handleGenerateIdeas() {
 <template>
   <div id="app-container">
     <h1>Movie Idea Generator</h1>
+    <h5>[dev]: press "Generate Ideas" once for better page formatting</h5>
 
-    <!-- Loading State for Core Data -->
-    <div v-if="isLoadingStaticData" class="loading-message">Loading core data...</div>
+    <div v-if="isLoadingStaticData" class="loading-message">Loading core data and tag selectors...</div>
 
-    <!-- Static Data Loading Error Message -->
     <div v-if="staticDataError" class="error-message static-error">{{ staticDataError }}</div>
 
-    <!-- Main Content Area -->
     <template v-if="!isLoadingStaticData && !staticDataError">
-      <!-- Controls Section -->
-      <div class="controls">
 
-        <!-- File Input & Default Actions -->
-        <FileInput @file-loaded="handleFileLoaded" @file-error="handleFileError"/>
-        <div class="default-file-actions">
-          <a href="/active-tags-list.json" download="active-tags-list-template.json" class="download-link" title="Download default active tags template">
-            Download Template
-          </a>
-          <span v-if="isUsingDefaultTags" class="default-loaded-indicator" title="Currently using the default tags template">
-             (Using Default)
-          </span>
+      <div class="controls-area">
+        <div class="controls-block tags-block">
+          <ActiveTagsSelector
+              :all-tags="allTagsData"
+              v-model="selectedTagsByCategory"
+              v-if="allTagsData && selectedTagsByCategory"
+          />
+          <div v-else class="loading-tags-placeholder">Loading tag selector...</div>
         </div>
-        <div v-if="fileErrorMessage" class="error-message file-error">{{ fileErrorMessage }}</div>
 
-        <!-- Generation Parameters -->
-        <ParameterSliders
-            :modelValue="generationParams"
-            @update:modelValue="updateGenerationParams"
-        />
+        <div class="controls-block params-block">
+          <ParameterSliders
+              :modelValue="generationParams"
+              @update:modelValue="updateGenerationParams"
+          />
+        </div>
+      </div>
 
-        <!-- Generate Button -->
+      <div class="generate-button-container">
         <button @click="handleGenerateIdeas" :disabled="!canGenerate">
           {{ isGenerating ? 'Generating...' : 'Generate Ideas' }}
         </button>
       </div>
 
-      <!-- Results Display Area -->
+
       <ResultsDisplay
           :ideas="generatedIdeas"
           :status-message="generationStatusMessage"
@@ -326,7 +246,6 @@ async function handleGenerateIdeas() {
 </template>
 
 <style>
-/* --- Global Styles --- */
 html, body {
   width: 100%;
   height: 100%;
@@ -340,29 +259,28 @@ body {
   color: #F5F5DC;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.6;
-  /* Improve scrollbar appearance */
   scrollbar-width: thin;
   scrollbar-color: #6c757d #343a40;
 }
-/* Webkit scrollbar styling */
+
 body::-webkit-scrollbar {
   width: 8px;
 }
+
 body::-webkit-scrollbar-track {
   background: #343a40;
   border-radius: 4px;
 }
+
 body::-webkit-scrollbar-thumb {
   background-color: #6c757d;
   border-radius: 4px;
   border: 2px solid #343a40;
 }
 
-
-/* --- App Container --- */
 #app-container {
-  max-width: 900px;
-  margin: 30px auto 50px auto; /* Top, H-Auto, Bottom */
+  max-width: 95%;
+  margin: 30px auto 50px auto;
   padding: 25px 15px;
   width: 100%;
   box-sizing: border-box;
@@ -372,47 +290,55 @@ body::-webkit-scrollbar-thumb {
   gap: 30px;
 }
 
-/* --- Controls Block --- */
-.controls {
-  display: flex;
-  flex-direction: column;
-  gap: 15px; /* Reduced gap inside controls */
+.controls-area {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+  width: 100%;
+  max-width: 1300px;
+  justify-items: center;
+}
+
+@media (min-width: 992px) {
+  .controls-area {
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+
+    .controls-area > .controls-block {
+      justify-self: center;
+    }
+  }
+}
+
+.controls-block {
   padding: 20px 25px;
   border: 1px solid #444;
   border-radius: 8px;
   background-color: #343a40;
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
   box-sizing: border-box;
-}
-
-/* --- Default File Actions (Download Link/Indicator) --- */
-.default-file-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: -5px; /* Pull closer to file input */
-  margin-bottom: 5px;
-  font-size: 0.9em;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.download-link {
-  color: #61dafb;
-  text-decoration: none;
-  padding: 4px 0;
-}
-.download-link:hover {
-  color: #bbe1fa;
-  text-decoration: underline;
-}
-
-.default-loaded-indicator {
-  color: #28a745; /* Green indicator */
+.loading-tags-placeholder {
+  color: #aaa;
   font-style: italic;
-  font-size: 0.9em;
+  text-align: center;
+  padding: 20px;
 }
 
-/* --- Button --- */
+.generate-button-container {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  justify-content: center;
+  margin-top: -10px;
+}
+
 button {
   padding: 12px 20px;
   cursor: pointer;
@@ -423,12 +349,18 @@ button {
   font-size: 16px;
   font-weight: bold;
   transition: background-color 0.2s ease, opacity 0.2s ease;
-  margin-top: 10px;
 }
-button:hover:not(:disabled) { background-color: #0056b3; }
-button:disabled { background-color: #5a5a5a; opacity: 0.7; cursor: not-allowed; }
 
-/* --- Headings & Links --- */
+button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+button:disabled {
+  background-color: #5a5a5a;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 h1 {
   text-align: center;
   color: #FFFFFF;
@@ -436,10 +368,15 @@ h1 {
   margin-bottom: 20px;
   font-weight: 300;
 }
-a { color: #61dafb; }
-a:hover { color: #bbe1fa; }
 
-/* --- Messages --- */
+a {
+  color: #61dafb;
+}
+
+a:hover {
+  color: #bbe1fa;
+}
+
 .error-message {
   color: #f8d7da;
   background-color: #721c24;
@@ -448,16 +385,13 @@ a:hover { color: #bbe1fa; }
   border-radius: 4px;
   line-height: 1.4;
 }
+
 .error-message.static-error {
   margin-bottom: 15px;
   text-align: center;
   font-weight: bold;
   width: 100%;
-  max-width: 600px; /* Match controls */
-}
-.error-message.file-error {
-  margin-top: -5px; /* Adjust spacing relative to actions */
-  margin-bottom: 5px;
+  max-width: 800px;
 }
 
 .loading-message {

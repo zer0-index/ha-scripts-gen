@@ -1,3 +1,4 @@
+<!-- /src/components/ParameterSliders.vue -->
 <script setup>
 import {defineProps, defineEmits, computed} from 'vue';
 
@@ -75,12 +76,12 @@ const potentialPlotTagsTotal = computed(() => {
 
     <!-- Min Compatibility Score -->
     <div class="slider-group">
-      <label for="min_score">Min Compatibility Score (2.0-5.0): {{ minScoreLabel }}</label>
+      <label for="min_score">Min Compatibility Score (3.0-5.0): {{ minScoreLabel }}</label>
       <!-- Note: Using step="0.1" allows finer control, but the generator logic uses fallbackScore = min_score - 1.0, -->
-      <!-- making integer steps (2.0, 3.0, 4.0, 5.0) more impactful. Keeping step="1.0" for simplicity based on original code. -->
-      <input type="range" id="min_score" min="2.0" max="5.0" step="1.0" :value="props.modelValue.min_score"
+      <!-- making integer steps (3.0, 4.0, 5.0) more impactful. Keeping step="1.0" for simplicity based on original code. -->
+      <input type="range" id="min_score" min="3.0" max="5.0" step="1.0" :value="props.modelValue.min_score"
              @input="updateParam('min_score', $event)"/>
-      <div class="slider-ticks"><span>2.0</span><span>3.0</span><span>4.0</span><span>5.0 (max)</span></div>
+      <div class="slider-ticks"><span>3.0</span><span>4.0</span><span>5.0 (max)</span></div>
     </div>
 
     <!-- Target Number of Genres -->
