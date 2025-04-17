@@ -1,3 +1,4 @@
+<!-- /src/components/ResultsDisplay.vue -->
 <script setup>
 import {defineProps} from 'vue';
 import IdeaCard from './IdeaCard.vue'; // Assuming IdeaCard handles individual card display

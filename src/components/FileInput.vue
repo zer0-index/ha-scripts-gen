@@ -1,3 +1,4 @@
+<!-- /src/components/FileInput.vue -->
 <script setup>
 import {ref, defineEmits} from 'vue';
 

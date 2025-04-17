@@ -1,3 +1,4 @@
+<!-- /src/components/IdeaCard.vue -->
 <script setup>
 import { defineProps, computed } from 'vue';
 
@@ -37,7 +38,7 @@ const hasWarnings = computed(() => props.idea.Warnings && props.idea.Warnings.le
 <template>
   <div class="idea-card">
     <!-- Card Header: Include the Score -->
-    <h4>Idea (Score: {{ idea.TotalScore?.toFixed(1) ?? 'N/A' }})</h4>
+    <h4>Idea (Inner SUM of Tags: {{ idea.TotalScore?.toFixed(1) ?? 'N/A' }})</h4>
 
     <!-- Definition List for structured display of idea details -->
     <dl class="idea-details">
@@ -45,17 +46,16 @@ const hasWarnings = computed(() => props.idea.Warnings && props.idea.Warnings.le
       <dd>{{ formattedGenres }}</dd>
 
       <dt>Setting:</dt>
-      <dd>{{ idea.Setting || 'N/A' }}</dd>
+      <dd>{{ idea.Setting }}</dd>
 
       <dt>Protagonist:</dt>
-      <dd>{{ idea.Protagonist || 'N/A' }}</dd>
+      <dd>{{ idea.Protagonist }}</dd>
 
       <dt>Antagonist:</dt>
-      <!-- Display 'None' if antagonist is null/undefined -->
       <dd>{{ idea.Antagonist || 'None' }}</dd>
 
       <dt>Supporting:</dt>
-      <dd>{{ formatTagList(idea.SupportingChars) }}</dd>
+      <dd>{{ formatTagList(idea.SupportingChars) || 'None' }}</dd>
 
       <dt>Finales:</dt>
       <dd>{{ formatTagList(idea.Finales) }}</dd>
@@ -63,6 +63,8 @@ const hasWarnings = computed(() => props.idea.Warnings && props.idea.Warnings.le
       <dt>Themes/Events:</dt>
       <dd>{{ formatTagList(idea.ThemesEvents) }}</dd>
     </dl>
+
+    <h5>[dev]: bigger Score, most likely, better</h5>
 
     <!-- Collapsible Warnings Section -->
     <details v-if="hasWarnings" class="warnings-details">
