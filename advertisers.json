@@ -1,0 +1,76 @@
+{
+  "NBG": {
+    "displayName": "NBG",
+    "quality": 2,
+    "targetAudience": {
+      "AF": 0,
+      "AM": 0
+    }
+  },
+  "ROSS_AND_ROSS_BROS": {
+    "displayName": "Ross & Ross Bros.",
+    "quality": 1,
+    "targetAudience": {
+      "AF": 0,
+      "AM": 0
+    }
+  },
+  "VIEN_PASCAL": {
+    "displayName": "Vien Pascal",
+    "quality": 1,
+    "targetAudience": {
+      "YM": 1,
+      "YF": 1,
+      "AM": 1,
+      "AF": 1
+    }
+  },
+  "SPARK": {
+    "displayName": "Spark",
+    "quality": 2,
+    "targetAudience": {
+      "YM": 2,
+      "YF": 2,
+      "AM": 2,
+      "AF": 2
+    }
+  },
+  "NATE_SPARROW_PRESS": {
+    "displayName": "Nate Sparrow Press",
+    "quality": 2,
+    "targetAudience": {
+      "YM": 0,
+      "YF": 0,
+      "AM": 0,
+      "AF": 0
+    }
+  },
+  "VELVET_GLOSS": {
+    "displayName": "Velvet Gloss",
+    "quality": 2,
+    "targetAudience": {
+      "TF": 2,
+      "YF": 2,
+      "AF": 2
+    }
+  },
+  "PIERRE_ZOLA_COMPANY": {
+    "displayName": "Pierre Zola Company",
+    "quality": 1,
+    "targetAudience": {
+      "TM": 2,
+      "YM": 2,
+      "AM": 2
+    }
+  },
+  "SPICE_MICE": {
+    "displayName": "Spice Mice",
+    "quality": 1,
+    "targetAudience": {
+      "TM": 2,
+      "TF": 2,
+      "YM": 2,
+      "YF": 2
+    }
+  }
+}
