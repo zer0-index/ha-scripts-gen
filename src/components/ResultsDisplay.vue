@@ -67,20 +67,18 @@ h2 {
   display: grid;
   /* Default: 1 column taking full width */
   grid-template-columns: 1fr;
-  gap: 25px; /* Spacing between cards */
-  margin-top: 20px; /* Space above the grid */
-  width: 100%; /* Grid takes full width of the .results-display container */
+  gap: 25px;
+  margin-top: 20px;
+  width: 100%;
 }
 
-/* Media Query for 2 columns on wider screens */
-@media (min-width: 768px) { /* Adjust breakpoint as needed */
+@media (min-width: 768px) {
   .ideas-grid {
     /* Switch to 2 equal-width columns */
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* Status Message Styling (using original colors slightly adjusted) */
 .status-message {
   font-weight: bold;
   padding: 12px 15px;
@@ -88,22 +86,19 @@ h2 {
   margin-bottom: 20px;
   text-align: center;
   border: 1px solid transparent;
-  color: #FFFFFF; /* White text for both */
+  color: #FFFFFF;
 }
 
 .status-message:not(.error) {
-  /* Using a less saturated green */
-  background-color: #28a745; /* Bootstrap success green */
+  background-color: #28a745;
   border-color: #28a745;
 }
 
 .status-message.error {
-  /* Using original red */
-  background-color: #dc3545; /* Bootstrap danger red */
+  background-color: #dc3545;
   border-color: #dc3545;
 }
 
-/* Placeholder Text Styling */
 .placeholder-text {
   text-align: center;
   color: #aaa;
@@ -111,18 +106,5 @@ h2 {
   margin-top: 20px;
   padding: 20px;
 }
-
-/* Add styles for IdeaCard if they are not global or defined within IdeaCard.vue */
-/* Example: */
-/*
-.ideas-grid > :deep(.idea-card) {
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 15px 20px;
-  background-color: #383c4a;
-  color: #e0e0e0;
-}
-*/
-/* Or preferably, style the card within IdeaCard.vue */
 
 </style>
