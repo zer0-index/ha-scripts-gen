@@ -3,18 +3,23 @@ import {ref, reactive, onMounted, computed} from 'vue';
 import ActiveTagsSelector from './components/ActiveTagsSelector.vue';
 import ParameterSliders from './components/ParameterSliders.vue';
 import ResultsDisplay from './components/ResultsDisplay.vue';
+import CalculatorPanel from './components/CalculatorPanel.vue';
 import {generateMovieIdeaWithRetry} from './services/generator.js';
-
-// --- State ---
+import {
+  runCalculations,
+  calculateAverageAudienceAppeal,
+  calculateAdvertiserMatches
+} from './services/calculator.js';
 
 const compatibilityData = ref(null);
 const allTagsData = ref(null);
 const defaultActiveTags = ref(null);
 const selectedTagsByCategory = ref(null);
-
+const audienceGroupsData = ref(null);
+const audienceWeightsData = ref(null);
+const advertisersData = ref(null);
 const isLoadingStaticData = ref(true);
 const staticDataError = ref(null);
-
 const generationParams = reactive({
   min_score: 4.0,
   num_genres_target: 2,
@@ -23,32 +28,46 @@ const generationParams = reactive({
   num_support_target: 1,
   add_antagonist: true,
 });
-
 const generatedIdeas = ref([]);
 const generationStatusMessage = ref('');
-const isErrorStatus = ref(false);
+const isGeneratorErrorStatus = ref(false);
 const isGenerating = ref(false);
+const calculationResults = ref(null);
+const isCalculating = ref(false);
+const calculatorDataError = ref(null);
 
-// --- Computed Properties ---
 
-const canGenerate = computed(() =>
-    selectedTagsByCategory.value !== null && // Ensure selection state is initialized
-    compatibilityData.value !== null &&    // Need compatibility data
-    !isLoadingStaticData.value &&          // Core data must be loaded
-    !staticDataError.value &&              // No core data errors
-    !isGenerating.value                    // Not already generating
+const canUseGenerator = computed(() =>
+    allTagsData.value !== null &&
+    compatibilityData.value !== null &&
+    selectedTagsByCategory.value !== null &&
+    !isLoadingStaticData.value &&
+    !staticDataError.value &&
+    !isGenerating.value
+);
+const canUseCalculator = computed(() =>
+    allTagsData.value !== null &&
+    audienceGroupsData.value !== null &&
+    audienceWeightsData.value !== null &&
+    advertisersData.value !== null &&
+    !isLoadingStaticData.value &&
+    !staticDataError.value &&
+    !calculatorDataError.value
 );
 
-// --- Lifecycle Hooks ---
 
 onMounted(async () => {
   isLoadingStaticData.value = true;
   staticDataError.value = null;
+  calculatorDataError.value = null;
   selectedTagsByCategory.value = null;
 
   try {
-    console.log("Loading core data (compatibility, all tags, default tags)...");
-    const [compatResponse, allTagsResponse, defaultTagsResponse] = await Promise.all([
+    console.log("Loading core data...");
+    const [
+      compatResponse, allTagsResponse, defaultTagsResponse,
+      audienceGroupsResponse, audienceWeightsResponse, advertisersResponse
+    ] = await Promise.all([
       fetch('./tags-compatibility.json').catch(e => ({
         error: true,
         statusText: e.message,
@@ -59,141 +78,195 @@ onMounted(async () => {
         error: true,
         statusText: e.message,
         url: './active-tags-list.json'
-      }))
+      })),
+      fetch('./audience-groups.json').catch(e => ({error: true, statusText: e.message, url: './audience-groups.json'})),
+      fetch('./audience-weights.json').catch(e => ({
+        error: true,
+        statusText: e.message,
+        url: './audience-weights.json'
+      })),
+      fetch('./advertisers.json').catch(e => ({error: true, statusText: e.message, url: './advertisers.json'}))
     ]);
 
-    // Check responses individually for better error reporting
-    if (compatResponse.error || !compatResponse.ok) {
-      throw new Error(`Failed to load ${compatResponse.url || 'tags-compatibility.json'}: ${compatResponse.statusText} (${compatResponse.status ?? 'Network Error'})`);
-    }
-    if (allTagsResponse.error || !allTagsResponse.ok) {
-      throw new Error(`Failed to load ${allTagsResponse.url || 'tags-list.json'}: ${allTagsResponse.statusText} (${allTagsResponse.status ?? 'Network Error'})`);
-    }
+    const generatorDataErrors = [];
+    if (compatResponse.error || !compatResponse.ok) generatorDataErrors.push(`Failed to load ${compatResponse.url || 'tags-compatibility.json'}: ${compatResponse.statusText} (${compatResponse.status ?? 'Network Error'})`);
+    if (allTagsResponse.error || !allTagsResponse.ok) generatorDataErrors.push(`Failed to load ${allTagsResponse.url || 'tags-list.json'}: ${allTagsResponse.statusText} (${allTagsResponse.status ?? 'Network Error'})`);
     if (defaultTagsResponse.error || !defaultTagsResponse.ok) {
-      console.warn(`Could not load default active tags from ${defaultTagsResponse.url || './active-tags-list.json'}: ${defaultTagsResponse.statusText} (${defaultTagsResponse.status ?? 'Network Error'}). Initializing with empty selection.`);
+      console.warn(`Could not load default tags from ${defaultTagsResponse.url || './active-tags-list.json'}.`);
       defaultActiveTags.value = {};
-      generationStatusMessage.value = 'Could not load default tag selection. Please select tags manually.';
     }
 
-    // Parse core data
+    const calcDataErrors = [];
+    if (audienceGroupsResponse.error || !audienceGroupsResponse.ok) calcDataErrors.push(`Failed to load ${audienceGroupsResponse.url || 'audience-groups.json'}: ${audienceGroupsResponse.statusText} (${audienceGroupsResponse.status ?? 'Network Error'})`);
+    if (audienceWeightsResponse.error || !audienceWeightsResponse.ok) calcDataErrors.push(`Failed to load ${audienceWeightsResponse.url || 'audience-weights.json'}: ${audienceWeightsResponse.statusText} (${audienceWeightsResponse.status ?? 'Network Error'})`);
+    if (advertisersResponse.error || !advertisersResponse.ok) calcDataErrors.push(`Failed to load ${advertisersResponse.url || 'advertisers.json'}: ${advertisersResponse.statusText} (${advertisersResponse.status ?? 'Network Error'})`);
+
+    const allCriticalErrors = [...generatorDataErrors, ...calcDataErrors];
+    if (allCriticalErrors.length > 0) throw new Error(`Critical data loading failed: ${allCriticalErrors.join('; ')}`);
+
     compatibilityData.value = await compatResponse.json();
     allTagsData.value = await allTagsResponse.json();
-    // Parse default tags only if fetch was successful
-    if (!defaultActiveTags.value) {
-      defaultActiveTags.value = await defaultTagsResponse.json();
-    }
+    if (!defaultActiveTags.value && !defaultTagsResponse.error && defaultTagsResponse.ok) defaultActiveTags.value = await defaultTagsResponse.json();
+    else if (!defaultActiveTags.value) defaultActiveTags.value = {};
+    audienceGroupsData.value = await audienceGroupsResponse.json();
+    audienceWeightsData.value = await audienceWeightsResponse.json();
+    advertisersData.value = await advertisersResponse.json();
 
     selectedTagsByCategory.value = JSON.parse(JSON.stringify(defaultActiveTags.value || {}));
-
-    console.log("Static core data loaded successfully. Initialized tag selection.");
+    console.log("All static core data loaded successfully.");
 
   } catch (error) {
     console.error("Error loading critical static data:", error);
-    staticDataError.value = `Failed to load critical data: ${error.message}. Generation unavailable. Please refresh.`;
-    generationStatusMessage.value = staticDataError.value;
-    isErrorStatus.value = true;
+    staticDataError.value = `Failed to load critical data: ${error.message}. App may be partially functional. Please refresh.`;
     allTagsData.value = null;
     compatibilityData.value = null;
+    audienceGroupsData.value = null;
+    audienceWeightsData.value = null;
+    advertisersData.value = null;
     selectedTagsByCategory.value = null;
   } finally {
     isLoadingStaticData.value = false;
   }
 });
 
-// --- Event Handlers ---
 
-/**
- * Updates reactive generationParams from child component.
- * @param {object} newParamsObject - The updated parameters.
- */
 function updateGenerationParams(newParamsObject) {
   Object.assign(generationParams, newParamsObject);
 }
 
-/**
- * Initiates the movie idea generation process.
- */
 async function handleGenerateIdeas() {
   generationStatusMessage.value = '';
-  isErrorStatus.value = false;
+  isGeneratorErrorStatus.value = false;
 
-  // --- Pre-generation Checks ---
-  if (!canGenerate.value) {
-    // Determine specific reason if needed (optional)
-    if (isLoadingStaticData.value || staticDataError.value) {
-      generationStatusMessage.value = "Error: Core data not loaded or failed to load.";
-    } else if (!selectedTagsByCategory.value) {
-      generationStatusMessage.value = "Error: Tag selection state not initialized.";
-    } else if (isGenerating.value) {
-      generationStatusMessage.value = "Generation is already in progress...";
-    } else {
-      generationStatusMessage.value = "Cannot generate. Please ensure tags are selected and parameters are set.";
-    }
-    isErrorStatus.value = true;
-    console.warn("Generation prevented:", generationStatusMessage.value);
+  if (!canUseGenerator.value) {
+    if (isLoadingStaticData.value) generationStatusMessage.value = "Waiting for core data...";
+    else if (staticDataError.value) generationStatusMessage.value = "Cannot generate: Core data failed.";
+    else if (!selectedTagsByCategory.value) generationStatusMessage.value = "Error: Generator state not initialized.";
+    else if (isGenerating.value) generationStatusMessage.value = "Generation in progress...";
+    else generationStatusMessage.value = "Cannot generate.";
+    isGeneratorErrorStatus.value = true;
     return;
   }
+  const calculatorDataAvailable = canUseCalculator.value;
+  if (!calculatorDataAvailable) {
+    console.warn("Cannot enrich generated ideas: Calculator data not loaded.");
+    generationStatusMessage.value = "Warning: Calculator data missing, ideas will lack audience/advertiser info.";
+  }
 
-  // Check if any tags are actually selected
-  const totalSelected = Object.values(selectedTagsByCategory.value || {}).reduce((sum, arr) => sum + arr.length, 0);
+  const totalSelected = Object.values(selectedTagsByCategory.value || {}).reduce((sum, arr) => sum + (arr?.length ?? 0), 0);
   if (totalSelected === 0) {
-    generationStatusMessage.value = "Warning: No tags selected. Please select some tags to generate ideas.";
-    isErrorStatus.value = false;
+    generationStatusMessage.value = "Warning: No tags selected for generator.";
+    isGeneratorErrorStatus.value = false;
     return;
   }
 
-
-  // --- Start Generation ---
   isGenerating.value = true;
-  generationStatusMessage.value = 'Generating ideas... Please wait.';
-  generatedIdeas.value = []; // Clear previous results
+  generationStatusMessage.value = 'Generating & Analyzing Ideas... Please wait.';
+  generatedIdeas.value = [];
   const successfulIdeas = [];
   const numberOfIdeasToGenerate = 6;
 
-  console.log("Generating ideas with parameters:", JSON.parse(JSON.stringify(generationParams)));
-  console.log("Using selected tags:", JSON.parse(JSON.stringify(selectedTagsByCategory.value)));
+  console.log("Generating ideas with params:", JSON.parse(JSON.stringify(generationParams)));
+  console.log("Using generator tags:", JSON.parse(JSON.stringify(selectedTagsByCategory.value)));
 
   try {
     await new Promise(resolve => setTimeout(resolve, 10));
 
     for (let i = 0; i < numberOfIdeasToGenerate; i++) {
-      console.log(`Attempting generation #${i + 1} of ${numberOfIdeasToGenerate}`);
+      console.log(`Attempting generation #${i + 1}`);
+      let currentIdea = null;
       try {
-        // Deep copy the *currently selected* tags FOR THIS ITERATION
         const tagsCopy = JSON.parse(JSON.stringify(selectedTagsByCategory.value));
-        // Shallow copy params FOR THIS ITERATION
         const currentParams = {...generationParams};
+        currentIdea = generateMovieIdeaWithRetry(tagsCopy, compatibilityData.value, currentParams);
 
-        const idea = generateMovieIdeaWithRetry(tagsCopy, compatibilityData.value, currentParams);
-
-        if (idea) {
-          successfulIdeas.push(idea);
-        } else {
-          console.warn(`Generation #${i + 1} failed (algorithm returned null).`);
+        if (currentIdea && currentIdea.AllTags && calculatorDataAvailable) {
+          console.log(`Enriching idea #${i + 1}...`);
+          try {
+            const appeal = calculateAverageAudienceAppeal(currentIdea.AllTags, audienceWeightsData.value, audienceGroupsData.value);
+            const matches = calculateAdvertiserMatches(appeal, advertisersData.value);
+            if (matches) {
+              currentIdea.interestedAudiences = matches.interestedAudiences;
+              currentIdea.topAdvertisers = matches.topAdvertisers;
+              currentIdea.usedAudienceFallback = matches.usedAudienceFallback;
+              currentIdea.usedAdvertiserFallback = matches.usedAdvertiserFallback;
+            } else {
+              console.warn(`Failed matches for idea #${i + 1}.`);
+              currentIdea.interestedAudiences = [];
+              currentIdea.topAdvertisers = [];
+              currentIdea.usedAudienceFallback = false;
+              currentIdea.usedAdvertiserFallback = false;
+            }
+          } catch (enrichError) {
+            console.error(`Error enriching idea #${i + 1}:`, enrichError);
+            currentIdea.interestedAudiences = [];
+            currentIdea.topAdvertisers = [];
+            currentIdea.usedAudienceFallback = false;
+            currentIdea.usedAdvertiserFallback = false;
+          }
+        } else if (currentIdea) {
+          currentIdea.interestedAudiences = [];
+          currentIdea.topAdvertisers = [];
+          currentIdea.usedAudienceFallback = false;
+          currentIdea.usedAdvertiserFallback = false;
         }
+
+        if (currentIdea) successfulIdeas.push(currentIdea);
+        else console.warn(`Generation #${i + 1} failed critically.`);
+
       } catch (generationError) {
-        console.error(`Error during single idea generation #${i + 1}:`, generationError);
+        console.error(`Error during single gen/enrich #${i + 1}:`, generationError);
       }
     }
 
     generatedIdeas.value = successfulIdeas;
 
-    // --- Update Final Status Message ---
     if (successfulIdeas.length === 0) {
-      generationStatusMessage.value = 'Could not generate any valid ideas. Try adjusting parameters or selecting different tags.';
-      isErrorStatus.value = true;
+      generationStatusMessage.value = 'Could not generate valid ideas.';
+      isGeneratorErrorStatus.value = true;
     } else {
-      generationStatusMessage.value = `Generation complete. Generated ${successfulIdeas.length} valid ideas.`;
-      isErrorStatus.value = false;
+      generationStatusMessage.value = `Generation complete. ${successfulIdeas.length} valid ideas.`;
+      isGeneratorErrorStatus.value = false;
+    }
+    if (!calculatorDataAvailable && successfulIdeas.length > 0) {
+      generationStatusMessage.value += " (Audience/Advertiser data was unavailable).";
     }
 
   } catch (processError) {
-    console.error("An unexpected error occurred during the generation process:", processError);
-    generationStatusMessage.value = `An unexpected error occurred during generation: ${processError.message}`;
-    isErrorStatus.value = true;
+    console.error("Unexpected error during generation process:", processError);
+    generationStatusMessage.value = `Unexpected error: ${processError.message}`;
+    isGeneratorErrorStatus.value = true;
     generatedIdeas.value = [];
   } finally {
     isGenerating.value = false;
+  }
+}
+
+async function handleCalculate(selectedCalculatorTags) {
+  console.log("Handle Calculate triggered:", selectedCalculatorTags);
+  if (!canUseCalculator.value) {
+    console.warn("Calculation attempt failed: Required data not available.");
+    calculationResults.value = {
+      validation: {isValid: false, errorMessages: ["Calculator data not loaded or failed."]},
+      results: null
+    };
+    return;
+  }
+  isCalculating.value = true;
+  calculationResults.value = null;
+  try {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const results = runCalculations(selectedCalculatorTags, audienceWeightsData.value, audienceGroupsData.value, advertisersData.value);
+    console.log("Calculation Result:", results);
+    calculationResults.value = results;
+  } catch (error) {
+    console.error("Error during handleCalculate:", error);
+    calculationResults.value = {
+      validation: {isValid: false, errorMessages: [`Calculation failed: ${error.message}`]},
+      results: null
+    };
+  } finally {
+    isCalculating.value = false;
   }
 }
 
@@ -201,47 +274,58 @@ async function handleGenerateIdeas() {
 
 <template>
   <div id="app-container">
-    <h1>Movie Idea Generator</h1>
-    <h5>[dev]: press "Generate Ideas" once for better page formatting</h5>
-
-    <div v-if="isLoadingStaticData" class="loading-message">Loading core data and tag selectors...</div>
-
+    <h1>Movie Idea Generator & Concept Calculator</h1>
+    <div v-if="isLoadingStaticData" class="loading-message">Loading core data...</div>
     <div v-if="staticDataError" class="error-message static-error">{{ staticDataError }}</div>
 
     <template v-if="!isLoadingStaticData && !staticDataError">
 
-      <div class="controls-area">
-        <div class="controls-block tags-block">
-          <ActiveTagsSelector
-              :all-tags="allTagsData"
-              v-model="selectedTagsByCategory"
-              v-if="allTagsData && selectedTagsByCategory"
-          />
-          <div v-else class="loading-tags-placeholder">Loading tag selector...</div>
+      <section class="calculator-section">
+        <div v-if="!canUseCalculator" class="loading-message">
+          Calculator unavailable: Loading required data or error occurred.
+          <div v-if="calculatorDataError" class="error-message static-error" style="margin-top: 10px;">
+            {{ calculatorDataError }}
+          </div>
         </div>
+        <CalculatorPanel
+            v-else
+            :all-tags="allTagsData"
+            :calculation-results="calculationResults"
+            :is-loading="isCalculating"
+            @calculate="handleCalculate"/>
+      </section>
 
-        <div class="controls-block params-block">
-          <ParameterSliders
-              :modelValue="generationParams"
-              @update:modelValue="updateGenerationParams"
-          />
+      <hr class="section-divider">
+
+      <section class="generator-section">
+        <h2>Idea Generator</h2>
+        <div class="controls-area">
+          <div class="controls-block tags-block">
+            <ActiveTagsSelector
+                :all-tags="allTagsData"
+                v-model="selectedTagsByCategory"
+                v-if="allTagsData && selectedTagsByCategory !== null"/>
+            <div v-else class="loading-tags-placeholder">Loading generator tag selector...</div>
+          </div>
+          <div class="controls-block params-block">
+            <ParameterSliders
+                :modelValue="generationParams"
+                @update:modelValue="updateGenerationParams"/>
+          </div>
         </div>
-      </div>
+        <div class="generate-button-container">
+          <button @click="handleGenerateIdeas" :disabled="!canUseGenerator || isGenerating">
+            {{ isGenerating ? 'Generating & Analyzing...' : 'Generate Ideas' }}
+          </button>
+        </div>
+        <ResultsDisplay
+            :ideas="generatedIdeas"
+            :status-message="generationStatusMessage"
+            :is-error-status="isGeneratorErrorStatus"/>
+      </section>
 
-      <div class="generate-button-container">
-        <button @click="handleGenerateIdeas" :disabled="!canGenerate">
-          {{ isGenerating ? 'Generating...' : 'Generate Ideas' }}
-        </button>
-      </div>
-
-
-      <ResultsDisplay
-          :ideas="generatedIdeas"
-          :status-message="generationStatusMessage"
-          :is-error-status="isErrorStatus"
-      />
+      <hr class="section-divider">
     </template>
-
   </div>
 </template>
 
@@ -254,13 +338,16 @@ html, body {
 }
 
 body {
-  display: block;
+  /* display: block; */
   background-color: #282c34;
   color: #F5F5DC;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.6;
   scrollbar-width: thin;
   scrollbar-color: #6c757d #343a40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 body::-webkit-scrollbar {
@@ -279,10 +366,11 @@ body::-webkit-scrollbar-thumb {
 }
 
 #app-container {
-  max-width: 95%;
-  margin: 30px auto 50px auto;
+  /* max-width: 95%; */
+  max-width: 1400px;
+  margin: 30px auto 50px;
   padding: 25px 15px;
-  width: 100%;
+  width: 90vw;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -290,12 +378,39 @@ body::-webkit-scrollbar-thumb {
   gap: 30px;
 }
 
+h1 {
+  text-align: center;
+  color: #FFFFFF;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-weight: 300;
+}
+
+h2 {
+  text-align: center;
+  color: #e8e8e8;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  font-weight: 300;
+  border-bottom: 1px solid #555;
+  padding-bottom: 10px;
+}
+
+.generator-section, .calculator-section {
+  width: 100%;
+  max-width: 1800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
 .controls-area {
   display: grid;
   grid-template-columns: 1fr;
   gap: 30px;
   width: 100%;
-  max-width: 1300px;
+  max-width: 1800px;
   justify-items: center;
 }
 
@@ -304,10 +419,6 @@ body::-webkit-scrollbar-thumb {
     grid-template-columns: 1fr 1fr;
     gap: 40px;
     align-items: start;
-
-    .controls-area > .controls-block {
-      justify-self: center;
-    }
   }
 }
 
@@ -317,7 +428,6 @@ body::-webkit-scrollbar-thumb {
   border-radius: 8px;
   background-color: #343a40;
   width: 100%;
-  max-width: 800px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -333,10 +443,10 @@ body::-webkit-scrollbar-thumb {
 
 .generate-button-container {
   width: 100%;
-  max-width: 800px;
   display: flex;
   justify-content: center;
-  margin-top: -10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 button {
@@ -359,14 +469,6 @@ button:disabled {
   background-color: #5a5a5a;
   opacity: 0.7;
   cursor: not-allowed;
-}
-
-h1 {
-  text-align: center;
-  color: #FFFFFF;
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-weight: 300;
 }
 
 a {
@@ -400,6 +502,26 @@ a:hover {
   color: #ccc;
   font-style: italic;
   font-size: 1.1em;
+  width: 100%;
+  max-width: 800px;
 }
 
+.section-divider {
+  border: none;
+  border-top: 1px solid #555;
+  margin: 40px 0;
+  width: 80%;
+  max-width: 1800px;
+}
+
+.calculator-section .calculator-panel {
+  width: 100%;
+}
+
+.generator-section,
+.calculator-section,
+.controls-block,
+.calculator-panel {
+  max-width: none;
+}
 </style>
