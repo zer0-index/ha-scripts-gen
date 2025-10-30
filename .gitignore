@@ -28,3 +28,9 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# copy of game config files
+Configs
+
+# tags from my save
+my_active_tags.json

@@ -2234,6 +2234,365 @@
   },
   "PROTAGONIST_WAYWARD_SOUL": {
     "tagId": "PROTAGONIST_WAYWARD_SOUL",
-    "weights": {}
+    "weights": {
+      "TF": "2.000",
+      "TM": "2.000",
+      "YF": "3.000",
+      "YM": "3.000",
+      "AF": "4.000",
+      "AM": "4.000"
+    }
+  },
+  "PROTAGONIST_RETIRED_LEGEND": {
+    "tagId": "PROTAGONIST_RETIRED_LEGEND",
+    "weights": {
+      "TF": "2.000",
+      "TM": "2.000",
+      "YF": "3.000",
+      "YM": "3.000",
+      "AF": "4.000",
+      "AM": "4.000"
+    }
+  },
+  "PROTAGONIST_CHARISMATIC_CRIMINAL": {
+    "tagId": "PROTAGONIST_CHARISMATIC_CRIMINAL",
+    "weights": {
+      "TF": "3.000",
+      "TM": "3.000",
+      "YF": "3.000",
+      "YM": "3.000",
+      "AF": "3.000",
+      "AM": "3.000"
+    }
+  },
+  "PROTAGONIST_AMBITIOUS_WOMAN": {
+    "tagId": "PROTAGONIST_AMBITIOUS_WOMAN",
+    "weights": {
+      "TF": "3.000",
+      "TM": "3.000",
+      "YF": "5.000",
+      "YM": "2.000",
+      "AF": "4.000",
+      "AM": "1.000"
+    }
+  },
+  "SUPPORTINGCHARACTER_CONCERNED_WIFE": {
+    "tagId": "SUPPORTINGCHARACTER_CONCERNED_WIFE",
+    "weights": {
+      "TF": "2.000",
+      "TM": "1.000",
+      "YF": "3.000",
+      "YM": "1.000",
+      "AF": "3.000",
+      "AM": "1.000"
+    }
+  },
+  "SUPPORTINGCHARACTER_KEY_WITNESS": {
+    "tagId": "SUPPORTINGCHARACTER_KEY_WITNESS",
+    "weights": {
+      "TF": "2.000",
+      "TM": "2.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "SUPPORTINGCHARACTER_VILLAINS_RIGHT_HAND": {
+    "tagId": "SUPPORTINGCHARACTER_VILLAINS_RIGHT_HAND",
+    "weights": {
+      "TF": "2.000",
+      "TM": "2.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "SUPPORTINGCHARACTER_PATRIARCH": {
+    "tagId": "SUPPORTINGCHARACTER_PATRIARCH",
+    "weights": {
+      "TF": "0.000",
+      "TM": "1.000",
+      "YF": "-3.000",
+      "YM": "2.000",
+      "AF": "1.000",
+      "AM": "4.000"
+    }
+  },
+  "ANTAGONIST_OLD_FRIEND_ENEMY": {
+    "tagId": "ANTAGONIST_OLD_FRIEND_ENEMY",
+    "weights": {
+      "TF": "2.000",
+      "TM": "2.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "ANTAGONIST_ENEMY_FROM_THE_PAST": {
+    "tagId": "ANTAGONIST_ENEMY_FROM_THE_PAST",
+    "weights": {
+      "TF": "2.000",
+      "TM": "2.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "ANTAGONIST_RULE_ENFORCER": {
+    "tagId": "ANTAGONIST_RULE_ENFORCER",
+    "weights": {
+      "TF": "0.000",
+      "TM": "1.000",
+      "YF": "1.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "3.000"
+    }
+  },
+  "ANTAGONIST_TYRANT": {
+    "tagId": "ANTAGONIST_TYRANT",
+    "weights": {
+      "TF": "1.000",
+      "TM": "1.000",
+      "YF": "3.000",
+      "YM": "3.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "ANTAGONIST_PATRIARCH": {
+    "tagId": "ANTAGONIST_PATRIARCH",
+    "weights": {
+      "TF": "0.000",
+      "TM": "1.000",
+      "YF": "-3.000",
+      "YM": "2.000",
+      "AF": "1.000",
+      "AM": "4.000"
+    }
+  },
+  "THEME_PROTECTING_THE_WITNESS": {
+    "tagId": "THEME_PROTECTING_THE_WITNESS",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "1.000",
+      "YM": "1.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "THEME_PROTAGONIST_ROPED_BACK_IN": {
+    "tagId": "THEME_PROTAGONIST_ROPED_BACK_IN",
+    "weights": {
+      "TF": "1.000",
+      "TM": "1.000",
+      "YF": "1.000",
+      "YM": "1.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "THEME_PROTAGONIST_PASSES_THE_TORCH": {
+    "tagId": "THEME_PROTAGONIST_PASSES_THE_TORCH",
+    "weights": {
+      "TF": "1.000",
+      "TM": "1.000",
+      "YF": "1.000",
+      "YM": "1.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "THEME_ONE_LAST_JOB": {
+    "tagId": "THEME_ONE_LAST_JOB",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "0.000",
+      "YM": "0.000",
+      "AF": "0.000",
+      "AM": "0.000"
+    }
+  },
+  "THEME_SLAPSTICK_MAYHEM": {
+    "tagId": "THEME_SLAPSTICK_MAYHEM",
+    "weights": {
+      "TF": "4.000",
+      "TM": "4.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "THEME_LOVERS_TAKE_A_BREAK": {
+    "tagId": "THEME_LOVERS_TAKE_A_BREAK",
+    "weights": {
+      "TF": "2.000",
+      "TM": "1.000",
+      "YF": "4.000",
+      "YM": "2.000",
+      "AF": "3.000",
+      "AM": "1.000"
+    }
+  },
+  "THEME_HIGHBROW_HUMOR": {
+    "tagId": "THEME_HIGHBROW_HUMOR",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "4.000",
+      "YM": "4.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "THEME_LOWBROW_HUMOR": {
+    "tagId": "THEME_LOWBROW_HUMOR",
+    "weights": {
+      "TF": "4.000",
+      "TM": "4.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "3.000",
+      "AM": "3.000"
+    }
+  },
+  "THEME_FRAGMENTED_NARRATIVE": {
+    "tagId": "THEME_FRAGMENTED_NARRATIVE",
+    "weights": {
+      "TF": "-4.000",
+      "TM": "-4.000",
+      "YF": "3.000",
+      "YM": "3.000",
+      "AF": "1.000",
+      "AM": "1.000"
+    }
+  },
+  "THEME_CATCHY_ONE_LINERS": {
+    "tagId": "THEME_CATCHY_ONE_LINERS",
+    "weights": {
+      "TF": "3.000",
+      "TM": "3.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "THEME_SOCIAL_REJECTION": {
+    "tagId": "THEME_SOCIAL_REJECTION",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "4.000",
+      "YM": "4.000",
+      "AF": "3.000",
+      "AM": "3.000"
+    }
+  },
+  "THEME_FROM_SMALL_TOWN_TO_BIG_TIME": {
+    "tagId": "THEME_FROM_SMALL_TOWN_TO_BIG_TIME",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "0.000",
+      "YM": "0.000",
+      "AF": "1.000",
+      "AM": "1.000"
+    }
+  },
+  "EVENTS_THRILLING_CHASE": {
+    "tagId": "EVENTS_THRILLING_CHASE",
+    "weights": {
+      "TF": "3.000",
+      "TM": "4.000",
+      "YF": "2.000",
+      "YM": "5.000",
+      "AF": "3.000",
+      "AM": "4.000"
+    }
+  },
+  "EVENTS_AMBUSH": {
+    "tagId": "EVENTS_AMBUSH",
+    "weights": {
+      "TF": "2.000",
+      "TM": "3.000",
+      "YF": "2.000",
+      "YM": "4.000",
+      "AF": "2.000",
+      "AM": "3.000"
+    }
+  },
+  "EVENTS_FINAL_SHOWDOWN": {
+    "tagId": "EVENTS_FINAL_SHOWDOWN",
+    "weights": {
+      "TF": "3.000",
+      "TM": "4.000",
+      "YF": "2.000",
+      "YM": "5.000",
+      "AF": "3.000",
+      "AM": "4.000"
+    }
+  },
+  "EVENTS_ANCIENT_PUZZLE": {
+    "tagId": "EVENTS_ANCIENT_PUZZLE",
+    "weights": {
+      "TF": "2.000",
+      "TM": "3.000",
+      "YF": "2.000",
+      "YM": "4.000",
+      "AF": "2.000",
+      "AM": "3.000"
+    }
+  },
+  "FINALE_PROTAGONIST_RETIRES_FOR_GOOD": {
+    "tagId": "FINALE_PROTAGONIST_RETIRES_FOR_GOOD",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "1.000",
+      "YM": "1.000",
+      "AF": "3.000",
+      "AM": "3.000"
+    }
+  },
+  "FINALE_TREASURE_LOST_FOREVER": {
+    "tagId": "FINALE_TREASURE_LOST_FOREVER",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "2.000",
+      "YM": "2.000",
+      "AF": "1.000",
+      "AM": "1.000"
+    }
+  },
+  "FINALE_EVERYONE_LEARNS_A_LESSON": {
+    "tagId": "FINALE_EVERYONE_LEARNS_A_LESSON",
+    "weights": {
+      "TF": "0.000",
+      "TM": "0.000",
+      "YF": "1.000",
+      "YM": "1.000",
+      "AF": "2.000",
+      "AM": "2.000"
+    }
+  },
+  "FINALE_PROTAGONISTS_DREAMS_CRUSHED": {
+    "tagId": "FINALE_PROTAGONISTS_DREAMS_CRUSHED",
+    "weights": {
+      "TF": "-2.000",
+      "TM": "-2.000",
+      "YF": "1.000",
+      "YM": "1.000",
+      "AF": "3.000",
+      "AM": "3.000"
+    }
   }
 }
